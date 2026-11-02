@@ -2,7 +2,7 @@ Radar is a live panel of the pull requests and issues that need you, on **GitHub
 
 ## Lanes
 
-A lane is a saved query that can hit several hosts at once. The defaults cover reviews requested from you, mentions, assigned items and your own open PRs. Assigned issues leaves out a parent issue when one of its open sub-issues is assigned to you, so the child task shows once (the lane editor's "Hide parents of my sub-issues"). Results merge by last update, with unseen items marked and an unseen count on Radar's rail icon.
+A lane is a saved query that can hit several hosts at once. Defaults: review requests, mentions, assigned items (not parents of your sub-issues) and your open PRs. Results merge by last update, with unseen items marked and an unseen count on Radar's rail icon.
 
 - **Describe what to track** in plain words ("PRs from my team that touch billing, not drafts") and bb's configured AI drafts a lane for you.
 - **Edit a lane** in a form with per-host sections, a live summary, chip inputs, and server-side filters for Gitstream history lanes.
