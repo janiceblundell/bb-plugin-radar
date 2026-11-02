@@ -14,7 +14,7 @@ describe("lane editor draft", () => {
         labels: ["//areas/x"], excludeLabels: ["skip"], query: "payments", draft: false, hasApproval: true,
         base: "main", head: "feature", state: "all",
       },
-      filter: { titleIncludes: ["t"], labelsAny: ["l"], excludeAuthors: ["e"], excludeDrafts: true, updatedWithinDays: 7 },
+      filter: { titleIncludes: ["t"], labelsAny: ["l"], excludeAuthors: ["e"], excludeDrafts: true, hideParentsOfMine: true, updatedWithinDays: 7 },
       limit: 50,
       description: "d",
       collapsed: true,

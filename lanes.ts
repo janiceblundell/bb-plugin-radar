@@ -24,6 +24,8 @@ const filterSchema = z
     /** Logins / emails whose items are dropped (bots, yourself, ...). */
     excludeAuthors: z.array(z.string().trim().min(1).max(120)).max(24).optional(),
     excludeDrafts: z.boolean().optional(),
+    /** GitHub only: drop issues that have an open sub-issue assigned to you (the child is the work; the parent is a duplicate). */
+    hideParentsOfMine: z.boolean().optional(),
     /** Drop items not updated in this many days. */
     updatedWithinDays: z.number().int().min(1).max(365).optional(),
   })
@@ -290,6 +292,7 @@ export const DEFAULT_LANES: Lane[] = [
     title: "Assigned issues",
     sources: ["github"],
     query: "is:open is:issue assignee:@me archived:false",
+    filter: { hideParentsOfMine: true },
     category: "issues",
   },
 ];
@@ -432,6 +435,34 @@ export const GITHUB_SEARCH_GRAPHQL = `query($q: String!, $n: Int!) {
     }
   }
 }`;
+
+/**
+ * The search above plus, per issue, its open sub-issues' assignees and the viewer's login,
+ * for `filter.hideParentsOfMine`. Only used by lanes that ask for it: nested connections cost more.
+ */
+export const GITHUB_SEARCH_GRAPHQL_WITH_SUB_ISSUES = `query($q: String!, $n: Int!) {
+  viewer { login }
+  search(query: $q, type: ISSUE, first: $n) {
+    nodes {
+      __typename
+      ... on PullRequest { number title url isDraft state createdAt updatedAt author { login } repository { nameWithOwner } labels(first: 12) { nodes { name } } }
+      ... on Issue { number title url state createdAt updatedAt author { login } repository { nameWithOwner } labels(first: 12) { nodes { name } } subIssues(first: 50) { nodes { state assignees(first: 10) { nodes { login } } } } }
+    }
+  }
+}`;
+
+/** True when a GitHub search node is an issue with an open sub-issue assigned to `login`. */
+export function hasOpenSubIssueAssignedTo(node: unknown, login: string): boolean {
+  if (login === "" || node === null || typeof node !== "object") return false;
+  const subs = ((node as Record<string, unknown>).subIssues as { nodes?: unknown[] } | undefined)?.nodes ?? [];
+  const me = login.toLowerCase();
+  return subs.some((sub) => {
+    if (sub === null || typeof sub !== "object") return false;
+    const s = sub as { state?: unknown; assignees?: { nodes?: unknown[] } };
+    if (s.state !== "OPEN") return false;
+    return (s.assignees?.nodes ?? []).some((a) => str((a as Record<string, unknown> | null)?.login).toLowerCase() === me);
+  });
+}
 
 /** GraphQL search has no sort argument; it must ride in the query string. */
 export function githubSearchQuery(query: string): string {
@@ -671,7 +702,8 @@ Lane shape (TypeScript):
   },` : ""}
   "filter"?: {                           // applied client-side after fetching
     "titleIncludes"?: string[], "labelsAny"?: string[], "excludeAuthors"?: string[],
-    "excludeDrafts"?: boolean, "updatedWithinDays"?: number
+    "excludeDrafts"?: boolean, "updatedWithinDays"?: number,
+    "hideParentsOfMine"?: boolean        // github: drop issues with an open sub-issue assigned to you (use for assigned-issue lanes)
   },
   "limit"?: number,                      // 1-100, default 30
   "category": "reviews" | "prs" | "issues" | "all"  // which Radar view shows the lane (every lane also shows in All)

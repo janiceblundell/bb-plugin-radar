@@ -26,6 +26,7 @@ export type Draft = {
   labelsAny: string[];
   excludeAuthors: string[];
   excludeDrafts: boolean;
+  hideParentsOfMine: boolean;
   updatedWithinDays: string;
   limit: string;
   description?: string;
@@ -63,6 +64,7 @@ export function toDraft(lane?: Lane): Draft {
     labelsAny: f.labelsAny ?? [],
     excludeAuthors: f.excludeAuthors ?? [],
     excludeDrafts: f.excludeDrafts === true,
+    hideParentsOfMine: f.hideParentsOfMine === true,
     updatedWithinDays: f.updatedWithinDays === undefined ? "" : String(f.updatedWithinDays),
     limit: lane?.limit === undefined ? "" : String(lane.limit),
     description: lane?.description,
@@ -96,6 +98,7 @@ export function fromDraft(draft: Draft): Partial<Lane> {
     labelsAny: arr(draft.labelsAny),
     excludeAuthors: arr(draft.excludeAuthors),
     excludeDrafts: draft.excludeDrafts || undefined,
+    hideParentsOfMine: draft.hideParentsOfMine || undefined,
     updatedWithinDays: opt(draft.updatedWithinDays) === undefined ? undefined : Number(draft.updatedWithinDays),
   };
   const hasFilter = Object.values(filter).some((value) => value !== undefined);

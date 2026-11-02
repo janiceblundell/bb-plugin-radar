@@ -64,6 +64,20 @@ describe("github graphql", () => {
     expect(githubSearchQuery("is:pr")).toBe("is:pr sort:updated-desc");
     expect(githubSearchQuery("is:pr sort:created-asc")).toBe("is:pr sort:created-asc");
   });
+
+  it("finds parents whose open sub-issue is assigned to the viewer", async () => {
+    const { hasOpenSubIssueAssignedTo, laneSchema, DEFAULT_LANES } = await import("../lanes");
+    const sub = (state: string, ...logins: string[]) => ({ state, assignees: { nodes: logins.map((login) => ({ login })) } });
+    const issue = (...subs: unknown[]) => ({ __typename: "Issue", number: 1, subIssues: { nodes: subs } });
+    expect(hasOpenSubIssueAssignedTo(issue(sub("OPEN", "other"), sub("OPEN", "Me")), "me")).toBe(true);
+    expect(hasOpenSubIssueAssignedTo(issue(sub("CLOSED", "me")), "me")).toBe(false);
+    expect(hasOpenSubIssueAssignedTo(issue(sub("OPEN", "other"), sub("OPEN")), "me")).toBe(false);
+    expect(hasOpenSubIssueAssignedTo(issue(), "me")).toBe(false);
+    expect(hasOpenSubIssueAssignedTo({ __typename: "PullRequest", number: 2 }, "me")).toBe(false);
+    expect(hasOpenSubIssueAssignedTo(issue(sub("OPEN", "me")), "")).toBe(false);
+    expect(laneSchema.parse({ id: "a", title: "A", sources: ["github"], query: "is:issue", category: "issues", filter: { hideParentsOfMine: true } }).filter).toEqual({ hideParentsOfMine: true });
+    expect(DEFAULT_LANES.find((lane) => lane.id === "github-assigned")?.filter).toEqual({ hideParentsOfMine: true });
+  });
 });
 
 describe("review threads", () => {

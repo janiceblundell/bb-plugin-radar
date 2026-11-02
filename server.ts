@@ -32,6 +32,8 @@ import {
   draftPrompt,
   fromGithubNode,
   GITHUB_SEARCH_GRAPHQL,
+  GITHUB_SEARCH_GRAPHQL_WITH_SUB_ISSUES,
+  hasOpenSubIssueAssignedTo,
   githubSearchQuery,
   withWindow,
   DEFAULT_MAX_AGE_DAYS,
@@ -1107,17 +1109,18 @@ export default async function plugin(bb: BbPluginApi) {
       if (!Array.isArray(data.items)) throw new UserError(`${SOURCE_LABEL.delta} search did not return items.`);
       return { items: data.items.map(fromDelta).filter((item): item is Item => item !== null), warning: "" };
     }
+    const hideParents = lane.filter?.hideParentsOfMine === true;
     const { stdout, error } = await toolOutput(
       config.ghPath,
       [
         "api", "graphql",
-        "-f", `query=${GITHUB_SEARCH_GRAPHQL}`,
+        "-f", `query=${hideParents ? GITHUB_SEARCH_GRAPHQL_WITH_SUB_ISSUES : GITHUB_SEARCH_GRAPHQL}`,
         "-f", `q=${githubSearchQuery(withWindow(lane.query ?? "", lane.filter, Date.now(), config.maxAgeDays))}`,
         "-F", `n=${lane.limit ?? 30}`,
       ],
       "GitHub",
     );
-    let data: { data?: { search?: { nodes?: unknown } | null } | null; errors?: { message?: unknown }[] } | null;
+    let data: { data?: { viewer?: { login?: unknown } | null; search?: { nodes?: unknown } | null } | null; errors?: { message?: unknown }[] } | null;
     try {
       data = JSON.parse(stdout) as typeof data;
     } catch {
@@ -1132,7 +1135,9 @@ export default async function plugin(bb: BbPluginApi) {
     }
     // A partial error (nodes behind SAML or an IP allowlist come back null): keep what is readable.
     if (errors.length === 0 && error !== null) throw error;
-    const items = nodes.map(fromGithubNode).filter((item): item is Item => item !== null);
+    const viewer = typeof data?.data?.viewer?.login === "string" ? data.data.viewer.login : "";
+    const kept = hideParents ? nodes.filter((node) => !hasOpenSubIssueAssignedTo(node, viewer)) : nodes;
+    const items = kept.map(fromGithubNode).filter((item): item is Item => item !== null);
     const unreadable = nodes.filter((node) => node === null).length || errors.length;
     return { items, warning: errors.length > 0 ? `GitHub: ${unreadable} result(s) not accessible (SAML/permissions)` : "" };
   }

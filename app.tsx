@@ -1134,7 +1134,7 @@ function LaneEditor({
   const tokens = (key: ListKey, label: string, placeholder: string) => (
     <TokenInput value={draft[key]} onChange={set(key)} label={label} placeholder={placeholder} />
   );
-  const toggle = (key: "everyone" | "excludeDrafts", label: string) => (
+  const toggle = (key: "everyone" | "excludeDrafts" | "hideParentsOfMine", label: string) => (
     <label className="radar-ed__switch">
       <input type="checkbox" role="switch" checked={draft[key]} onChange={(event) => set(key)(event.target.checked)} />
       <span>{label}</span>
@@ -1281,6 +1281,7 @@ function LaneEditor({
             </span>
           </Row>
           <Row label="">{toggle("excludeDrafts", "Hide drafts")}</Row>
+          {draft.sources.includes("github") && <Row label="">{toggle("hideParentsOfMine", "Hide parents of my sub-issues")}</Row>}
         </div>
       </Section>
 
